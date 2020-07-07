@@ -1,0 +1,119 @@
+// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
+import { Logger } from "./logger.ts";
+import { BaseHandler, ConsoleHandler, WriterHandler, FileHandler, RotatingFileHandler, } from "./handlers.ts";
+import { assert } from "../_util/assert.ts";
+export { LogLevels } from "./levels.ts";
+export { Logger } from "./logger.ts";
+export class LoggerConfig {
+}
+const DEFAULT_LEVEL = "INFO";
+const DEFAULT_CONFIG = {
+    handlers: {
+        default: new ConsoleHandler(DEFAULT_LEVEL),
+    },
+    loggers: {
+        default: {
+            level: DEFAULT_LEVEL,
+            handlers: ["default"],
+        },
+    },
+};
+const state = {
+    handlers: new Map(),
+    loggers: new Map(),
+    config: DEFAULT_CONFIG,
+};
+export const handlers = {
+    BaseHandler,
+    ConsoleHandler,
+    WriterHandler,
+    FileHandler,
+    RotatingFileHandler,
+};
+export function getLogger(name) {
+    if (!name) {
+        const d = state.loggers.get("default");
+        assert(d != null, `"default" logger must be set for getting logger without name`);
+        return d;
+    }
+    const result = state.loggers.get(name);
+    if (!result) {
+        const logger = new Logger(name, "NOTSET", { handlers: [] });
+        state.loggers.set(name, logger);
+        return logger;
+    }
+    return result;
+}
+export function debug(msg, ...args) {
+    // Assist TS compiler with pass-through generic type
+    if (msg instanceof Function) {
+        return getLogger("default").debug(msg, ...args);
+    }
+    return getLogger("default").debug(msg, ...args);
+}
+export function info(msg, ...args) {
+    // Assist TS compiler with pass-through generic type
+    if (msg instanceof Function) {
+        return getLogger("default").info(msg, ...args);
+    }
+    return getLogger("default").info(msg, ...args);
+}
+export function warning(msg, ...args) {
+    // Assist TS compiler with pass-through generic type
+    if (msg instanceof Function) {
+        return getLogger("default").warning(msg, ...args);
+    }
+    return getLogger("default").warning(msg, ...args);
+}
+export function error(msg, ...args) {
+    // Assist TS compiler with pass-through generic type
+    if (msg instanceof Function) {
+        return getLogger("default").error(msg, ...args);
+    }
+    return getLogger("default").error(msg, ...args);
+}
+export function critical(msg, ...args) {
+    // Assist TS compiler with pass-through generic type
+    if (msg instanceof Function) {
+        return getLogger("default").critical(msg, ...args);
+    }
+    return getLogger("default").critical(msg, ...args);
+}
+export async function setup(config) {
+    state.config = {
+        handlers: { ...DEFAULT_CONFIG.handlers, ...config.handlers },
+        loggers: { ...DEFAULT_CONFIG.loggers, ...config.loggers },
+    };
+    // tear down existing handlers
+    state.handlers.forEach((handler) => {
+        handler.destroy();
+    });
+    state.handlers.clear();
+    // setup handlers
+    const handlers = state.config.handlers || {};
+    for (const handlerName in handlers) {
+        const handler = handlers[handlerName];
+        await handler.setup();
+        state.handlers.set(handlerName, handler);
+    }
+    // remove existing loggers
+    state.loggers.clear();
+    // setup loggers
+    const loggers = state.config.loggers || {};
+    for (const loggerName in loggers) {
+        const loggerConfig = loggers[loggerName];
+        const handlerNames = loggerConfig.handlers || [];
+        const handlers = [];
+        handlerNames.forEach((handlerName) => {
+            const handler = state.handlers.get(handlerName);
+            if (handler) {
+                handlers.push(handler);
+            }
+        });
+        const levelName = loggerConfig.level || DEFAULT_LEVEL;
+        const logger = new Logger(loggerName, levelName, { handlers: handlers });
+        state.loggers.set(loggerName, logger);
+    }
+}
+await setup(DEFAULT_CONFIG);
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibW9kLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsibW9kLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLDBFQUEwRTtBQUMxRSxPQUFPLEVBQUUsTUFBTSxFQUFFLE1BQU0sYUFBYSxDQUFDO0FBQ3JDLE9BQU8sRUFDTCxXQUFXLEVBQ1gsY0FBYyxFQUNkLGFBQWEsRUFDYixXQUFXLEVBQ1gsbUJBQW1CLEdBQ3BCLE1BQU0sZUFBZSxDQUFDO0FBQ3ZCLE9BQU8sRUFBRSxNQUFNLEVBQUUsTUFBTSxvQkFBb0IsQ0FBQztBQUc1QyxPQUFPLEVBQUUsU0FBUyxFQUFhLE1BQU0sYUFBYSxDQUFDO0FBQ25ELE9BQU8sRUFBRSxNQUFNLEVBQUUsTUFBTSxhQUFhLENBQUM7QUFFckMsTUFBTSxPQUFPLFlBQVk7Q0FHeEI7QUFXRCxNQUFNLGFBQWEsR0FBRyxNQUFNLENBQUM7QUFDN0IsTUFBTSxjQUFjLEdBQWM7SUFDaEMsUUFBUSxFQUFFO1FBQ1IsT0FBTyxFQUFFLElBQUksY0FBYyxDQUFDLGFBQWEsQ0FBQztLQUMzQztJQUVELE9BQU8sRUFBRTtRQUNQLE9BQU8sRUFBRTtZQUNQLEtBQUssRUFBRSxhQUFhO1lBQ3BCLFFBQVEsRUFBRSxDQUFDLFNBQVMsQ0FBQztTQUN0QjtLQUNGO0NBQ0YsQ0FBQztBQUVGLE1BQU0sS0FBSyxHQUFHO0lBQ1osUUFBUSxFQUFFLElBQUksR0FBRyxFQUF1QjtJQUN4QyxPQUFPLEVBQUUsSUFBSSxHQUFHLEVBQWtCO0lBQ2xDLE1BQU0sRUFBRSxjQUFjO0NBQ3ZCLENBQUM7QUFFRixNQUFNLENBQUMsTUFBTSxRQUFRLEdBQUc7SUFDdEIsV0FBVztJQUNYLGNBQWM7SUFDZCxhQUFhO0lBQ2IsV0FBVztJQUNYLG1CQUFtQjtDQUNwQixDQUFDO0FBRUYsTUFBTSxVQUFVLFNBQVMsQ0FBQyxJQUFhO0lBQ3JDLElBQUksQ0FBQyxJQUFJLEVBQUU7UUFDVCxNQUFNLENBQUMsR0FBRyxLQUFLLENBQUMsT0FBTyxDQUFDLEdB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
